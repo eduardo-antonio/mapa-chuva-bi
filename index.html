@@ -3,92 +3,106 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Previsão de Chuva — Fazendas</title>
+<title>Previsão de Chuva</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #0f1923; color: #e8edf2;
-  height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #f0f2f5; color: #2c3e50; min-height: 100vh; padding: 14px;
 }
-header {
-  padding: 10px 16px; background: #111d28;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
-  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
-}
-header h1 { font-size: 14px; font-weight: 500; color: #c8d8e8; }
-#status   { font-size: 11px; color: #5a7a96; }
-.date-bar {
-  display: flex; gap: 6px; padding: 8px 12px; background: #111d28;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  overflow-x: auto; flex-shrink: 0; scrollbar-width: none;
-}
+.dash { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.header { display: flex; justify-content: space-between; align-items: baseline; }
+.header h1 { font-size: 18px; font-weight: 600; color: #1a2535; }
+.header a  { font-size: 11px; color: #7a8fa6; text-decoration: none; }
+.cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.card { background: #fff; border: 1px solid #dde3ec; border-radius: 8px; overflow: hidden; text-align: center; }
+.card-title { font-size: 11px; font-weight: 600; color: #4a5a6e; padding: 7px 8px 6px; border-bottom: 1px solid #dde3ec; background: #f8f9fb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-body  { padding: 10px 8px 8px; background: linear-gradient(135deg, #4d9de0 0%, #2979c8 100%); }
+.card-val   { font-size: 26px; font-weight: 700; color: #fff; line-height: 1; }
+.card-label { font-size: 10px; color: rgba(255,255,255,0.8); margin-top: 3px; }
+.middle { display: grid; grid-template-columns: 1fr 380px; gap: 12px; align-items: start; }
+.table-box, .map-box, .chart-box { background: #fff; border: 1px solid #dde3ec; border-radius: 8px; overflow: hidden; }
+.box-title { font-size: 12px; font-weight: 600; color: #1a2535; padding: 9px 12px; border-bottom: 1px solid #dde3ec; background: #f8f9fb; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead th { background: #e8edf5; color: #4a5a6e; font-weight: 600; font-size: 11px; padding: 6px 8px; text-align: right; border-bottom: 1px solid #dde3ec; }
+thead th:first-child { text-align: left; }
+tbody tr:nth-child(even) { background: #f8f9fb; }
+tbody td { padding: 5px 8px; text-align: right; border-bottom: 1px solid #f0f2f5; color: #2c3e50; }
+tbody td:first-child { text-align: left; color: #4a5a6e; font-weight: 500; }
+.td-hi { color: #1565c0; font-weight: 600; }
+tfoot tr { background: #e8edf5; }
+tfoot td { padding: 6px 8px; text-align: right; font-weight: 700; font-size: 12px; color: #1a2535; border-top: 2px solid #c5d0e0; }
+tfoot td:first-child { text-align: left; }
+.date-bar { display: flex; gap: 4px; padding: 7px 8px; background: #f8f9fb; border-bottom: 1px solid #dde3ec; overflow-x: auto; scrollbar-width: none; }
 .date-bar::-webkit-scrollbar { display: none; }
-.date-btn {
-  flex-shrink: 0; background: transparent;
-  border: 1px solid rgba(255,255,255,0.12); border-radius: 6px;
-  color: #7a9ab8; font-size: 11px; padding: 5px 10px;
-  cursor: pointer; text-align: center; min-width: 64px;
-}
-.date-btn:hover { background: rgba(255,255,255,0.06); color: #c8d8e8; }
-.date-btn.active { background: rgba(56,145,218,0.2); border-color: rgba(56,145,218,0.6); color: #7ac4f0; }
-.date-btn .ds { font-size: 10px; opacity: 0.7; display: block; }
-.date-btn .dn { font-size: 13px; font-weight: 500; }
-#map { flex: 1; }
-.leaflet-container { background: #182634; }
-.legend {
-  position: absolute; bottom: 20px; left: 12px; z-index: 1000;
-  background: rgba(17,29,40,0.92); border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 10px; padding: 12px 14px;
-}
-.legend h3 { font-size: 10px; font-weight: 500; color: #5a7a96; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 9px; }
-.legend-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 11px; color: #7a9ab8; }
-.lc { border-radius: 50%; border: 1.5px solid rgba(100,180,255,0.5); background: rgba(56,145,218,0.3); flex-shrink: 0; }
-.tt { background: #0f1d2a !important; border: 1px solid rgba(56,145,218,0.35) !important; border-radius: 8px !important; color: #c8d8e8 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important; padding: 9px 13px !important; font-size: 12px !important; box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important; white-space: nowrap !important; }
-.tt::before { display: none !important; }
-.tt-n { font-weight: 500; color: #e8edf2; margin-bottom: 5px; font-size: 13px; }
-.tt-r { display: flex; align-items: center; gap: 8px; margin-top: 3px; }
-.tt-l { color: #5a7a96; font-size: 11px; min-width: 60px; }
-.loading-overlay {
-  position: absolute; inset: 0; background: rgba(15,25,35,0.88);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 2000; flex-direction: column; gap: 12px;
-}
-.spinner { width: 32px; height: 32px; border: 2px solid rgba(56,145,218,0.2); border-top-color: #3891da; border-radius: 50%; animation: spin 0.8s linear infinite; }
+.date-btn { flex-shrink: 0; background: transparent; border: 1px solid #dde3ec; border-radius: 5px; color: #7a8fa6; font-size: 10px; padding: 3px 7px; cursor: pointer; text-align: center; min-width: 48px; line-height: 1.3; }
+.date-btn:hover { background: #edf1f7; }
+.date-btn.active { background: #2979c8; border-color: #2979c8; color: #fff; }
+.date-btn .ds { display: block; font-size: 9px; opacity: 0.85; }
+.date-btn .dn { display: block; font-size: 11px; font-weight: 600; }
+#map { height: 280px; }
+.map-legend { padding: 8px 12px; background: #f8f9fb; border-top: 1px solid #dde3ec; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.map-legend span { font-size: 10px; color: #4a5a6e; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.leg-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: #7a8fa6; }
+.leg-dot  { border-radius: 50%; border: 1.5px solid; flex-shrink: 0; }
+.bars-wrap { padding: 12px 16px 8px; display: flex; align-items: flex-end; gap: 10px; height: 180px; }
+.bar-col   { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; gap: 4px; }
+.bar-pct   { font-size: 11px; font-weight: 600; color: #4a5a6e; }
+.bar-fill  { width: 100%; max-width: 64px; background: #b0c8e8; border-radius: 4px 4px 0 0; min-height: 4px; display: flex; align-items: center; justify-content: center; }
+.bar-fill.high { background: #4d9de0; }
+.bar-mm   { font-size: 10px; font-weight: 700; color: #fff; white-space: nowrap; }
+.bar-date { font-size: 10px; color: #7a8fa6; text-align: center; white-space: nowrap; }
+.loading { position: fixed; inset: 0; background: rgba(240,242,245,0.93); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; gap: 12px; }
+.spinner { width: 36px; height: 36px; border: 3px solid #dde3ec; border-top-color: #2979c8; border-radius: 50%; animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.loading-overlay p { font-size: 13px; color: #5a7a96; }
-.leaflet-control-zoom a { background: #111d28 !important; color: #9ab5cc !important; border-color: rgba(255,255,255,0.1) !important; }
-.leaflet-control-attribution { background: rgba(17,29,40,0.7) !important; color: #3a5a72 !important; font-size: 10px !important; }
-.leaflet-control-attribution a { color: #3a5a72 !important; }
+.loading p { font-size: 13px; color: #7a8fa6; }
+.leaflet-control-zoom a { background: #fff !important; color: #4a5a6e !important; border-color: #dde3ec !important; }
+.leaflet-control-attribution { background: rgba(255,255,255,0.8) !important; font-size: 9px !important; }
 </style>
 </head>
 <body>
-<header>
-  <h1>&#127783; Previsão de Chuva — Fazendas</h1>
-  <span id="status">carregando...</span>
-</header>
-<div class="date-bar" id="dateBar"></div>
-<div style="position:relative;flex:1;display:flex;flex-direction:column;">
-  <div id="map"></div>
-  <div class="loading-overlay" id="loading">
-    <div class="spinner"></div>
-    <p>Buscando previsão Open-Meteo...</p>
+
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <p>Buscando previsão Open-Meteo...</p>
+</div>
+
+<div class="dash">
+  <div class="header">
+    <h1>Previsão de Chuva Amanhã</h1>
+    <a href="https://open-meteo.com" target="_blank">fonte: https://open-meteo.com</a>
   </div>
-  <div class="legend">
-    <h3>Probabilidade</h3>
-    <div class="legend-row"><div class="lc" style="width:10px;height:10px;"></div>&lt; 30%</div>
-    <div class="legend-row"><div class="lc" style="width:16px;height:16px;"></div>30 – 60%</div>
-    <div class="legend-row"><div class="lc" style="width:22px;height:22px;"></div>60 – 80%</div>
-    <div class="legend-row"><div class="lc" style="width:30px;height:30px;background:rgba(56,145,218,0.65);border-color:rgba(140,210,255,0.85);"></div>&gt; 80%</div>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="middle">
+    <div class="table-box">
+      <div class="box-title">Previsão de Chuva (mm) Por Regionais Próximos 7 Dias</div>
+      <div style="overflow-x:auto;"><table id="tabela"></table></div>
+    </div>
+
+    <div class="map-box">
+      <div class="date-bar" id="dateBar"></div>
+      <div id="map"></div>
+      <div class="map-legend">
+        <span>Prob.</span>
+        <div class="leg-item"><div class="leg-dot" style="width:8px;height:8px;background:rgba(41,121,200,0.2);border-color:rgba(41,121,200,0.4);"></div>&lt; 30%</div>
+        <div class="leg-item"><div class="leg-dot" style="width:12px;height:12px;background:rgba(41,121,200,0.4);border-color:rgba(41,121,200,0.65);"></div>30–60%</div>
+        <div class="leg-item"><div class="leg-dot" style="width:17px;height:17px;background:rgba(41,121,200,0.65);border-color:rgba(41,121,200,0.85);"></div>60–80%</div>
+        <div class="leg-item"><div class="leg-dot" style="width:22px;height:22px;background:rgba(41,121,200,0.88);border-color:#2979c8;"></div>&gt; 80%</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-box">
+    <div class="box-title">Previsão Média de Probabilidade de Chuva nos Próximos 7 Dias</div>
+    <div class="bars-wrap" id="barsWrap"></div>
   </div>
 </div>
+
 <script>
-/* ============================================================
-   FAZENDAS — mesma lista do seu Power Query
-   Adicione ou remova locais aqui conforme necessário
-============================================================ */
 const FAZENDAS = [
   { nome: "Dois Córregos", lat: -22.37,   lng: -48.38   },
   { nome: "Barra Bonita",  lat: -22.49,   lng: -48.56   },
@@ -100,105 +114,134 @@ const FAZENDAS = [
 const DIAS  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 
-function fmtDate(iso) {
+function fmtISO(iso) {
   const [y,m,d] = iso.split('-').map(Number);
-  const dt   = new Date(y, m-1, d);
-  const hoje = new Date(); hoje.setHours(0,0,0,0);
-  const label = dt.getTime()===hoje.getTime() ? 'Hoje' : DIAS[dt.getDay()];
-  return { label, sub: d+' '+MESES[m-1] };
+  return `${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`;
 }
 
-function radius(p) { return 8 + (p/100)*32; }
-
-function style(p) {
-  if (p>=80) return { fill:'rgba(56,145,218,0.75)', stroke:'rgba(140,210,255,0.95)' };
-  if (p>=60) return { fill:'rgba(56,145,218,0.55)', stroke:'rgba(100,180,255,0.80)' };
-  if (p>=30) return { fill:'rgba(56,145,218,0.35)', stroke:'rgba(80,160,240,0.65)'  };
-  return           { fill:'rgba(56,145,218,0.18)', stroke:'rgba(80,150,220,0.45)'  };
+function fmtBtn(iso) {
+  const [y,m,d] = iso.split('-').map(Number);
+  const dt = new Date(y,m-1,d);
+  const hj = new Date(); hj.setHours(0,0,0,0);
+  return { label: dt.getTime()===hj.getTime() ? 'Hoje' : DIAS[dt.getDay()], sub: `${d} ${MESES[m-1]}` };
 }
 
-function cor(p) {
-  if (p>=80) return '#3891da';
-  if (p>=60) return '#5aaae0';
-  if (p>=30) return '#7bbde6';
-  return '#9dcfec';
-}
+function avg(arr) { return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
 
-const map = L.map('map',{ center:[-22.1,-48.1], zoom:9 });
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
-  attribution:'© OpenStreetMap · © CARTO', subdomains:'abcd', maxZoom:19
-}).addTo(map);
-
-let dados = {};
-let datas = [];
-let circulos = [];
+let dadosPorDia = {}, datas = [], circulos = [], map;
 
 async function fetchDados() {
   const lats = FAZENDAS.map(f=>f.lat).join(',');
   const lngs = FAZENDAS.map(f=>f.lng).join(',');
   const url  = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}`
-             + `&daily=rain_sum,precipitation_probability_max`
-             + `&timezone=America%2FSao_Paulo&forecast_days=7`;
-  const res  = await fetch(url);
-  const json = await res.json();
+             + `&daily=rain_sum,precipitation_probability_max&timezone=America%2FSao_Paulo&forecast_days=7`;
+  const json = await (await fetch(url)).json();
   const lista = Array.isArray(json) ? json : [json];
   lista.forEach((loc,i) => {
     const f = FAZENDAS[i];
     loc.daily.time.forEach((data,d) => {
-      if (!dados[data]) dados[data] = [];
-      dados[data].push({
-        nome:  f.nome, lat: f.lat, lng: f.lng,
-        prob:  loc.daily.precipitation_probability_max[d] ?? 0,
-        chuva: loc.daily.rain_sum[d] ?? 0,
-      });
+      if (!dadosPorDia[data]) dadosPorDia[data] = [];
+      dadosPorDia[data].push({ nome:f.nome, lat:f.lat, lng:f.lng, prob:loc.daily.precipitation_probability_max[d]??0, chuva:loc.daily.rain_sum[d]??0 });
     });
   });
-  datas = Object.keys(dados).sort();
+  datas = Object.keys(dadosPorDia).sort();
 }
 
-function renderDia(idx) {
+function renderCards() {
+  const pontos = dadosPorDia[datas[1]||datas[0]] || [];
+  document.getElementById('cards').innerHTML = FAZENDAS.map(f => {
+    const p = pontos.find(x=>x.nome===f.nome)||{prob:0};
+    return `<div class="card"><div class="card-title">${f.nome}</div><div class="card-body"><div class="card-val">${p.prob} %</div><div class="card-label">Prob. (%)</div></div></div>`;
+  }).join('');
+}
+
+function renderTabela() {
+  const nomes = FAZENDAS.map(f=>f.nome);
+  const totF  = Object.fromEntries(nomes.map(n=>[n,0]));
+  let rows = '';
+  datas.forEach(data => {
+    const pts  = dadosPorDia[data]||[];
+    const vals = nomes.map(n => { const p=pts.find(x=>x.nome===n); return p?p.chuva:0; });
+    vals.forEach((v,i)=>totF[nomes[i]]+=v);
+    const med = avg(vals);
+    rows += `<tr><td>${fmtISO(data)}</td>${vals.map(v=>`<td class="${v>5?'td-hi':''}">${v.toFixed(2)}</td>`).join('')}<td class="${med>5?'td-hi':''}">${med.toFixed(2)}</td></tr>`;
+  });
+  const tVals = nomes.map(n=>totF[n]);
+  document.getElementById('tabela').innerHTML =
+    `<thead><tr><th>Data</th>${nomes.map(n=>`<th>${n}</th>`).join('')}<th>Total</th></tr></thead>`+
+    `<tbody>${rows}</tbody>`+
+    `<tfoot><tr><td>Total</td>${tVals.map(v=>`<td>${v.toFixed(2)}</td>`).join('')}<td>${avg(tVals).toFixed(2)}</td></tr></tfoot>`;
+}
+
+function initMap() {
+  map = L.map('map',{center:[-22.1,-48.1],zoom:8});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+    attribution:'© OpenStreetMap · © CARTO', subdomains:'abcd', maxZoom:19
+  }).addTo(map);
+}
+
+function bStyle(p) {
+  const a = p>=80?0.85:p>=60?0.65:p>=30?0.42:0.20;
+  return { fill:`rgba(41,121,200,${a})`, stroke:`rgba(41,121,200,${Math.min(a+0.2,1)})` };
+}
+
+function renderMapDia(idx) {
   document.querySelectorAll('.date-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
-  circulos.forEach(c=>map.removeLayer(c));
-  circulos = [];
-  const data = datas[idx];
-  (dados[data]||[]).forEach(p => {
-    const s = style(p.prob);
-    const r = radius(p.prob);
-    const c = L.circleMarker([p.lat,p.lng],{
-      radius:r, fillColor:s.fill, fillOpacity:1, color:s.stroke, weight:1.5
-    }).addTo(map);
-    c.bindTooltip(
-      `<div class="tt-n">${p.nome}</div>`+
-      `<div class="tt-r"><span class="tt-l">Prob. chuva</span><span style="color:${cor(p.prob)};font-weight:500">${p.prob}%</span></div>`+
-      `<div class="tt-r"><span class="tt-l">Chuva</span><span style="font-weight:500">${p.chuva.toFixed(1)} mm</span></div>`+
-      `<div class="tt-r"><span class="tt-l">Data</span><span style="color:#5a7a96">${data}</span></div>`,
-      { className:'tt', direction:'top', offset:[0,-r] }
-    );
+  circulos.forEach(c=>map.removeLayer(c)); circulos=[];
+  (dadosPorDia[datas[idx]]||[]).forEach(p=>{
+    const s=bStyle(p.prob), r=7+(p.prob/100)*24;
+    const c=L.circleMarker([p.lat,p.lng],{radius:r,fillColor:s.fill,fillOpacity:1,color:s.stroke,weight:1.5}).addTo(map);
+    c.bindTooltip(`<b>${p.nome}</b><br><span style="color:#2979c8;font-weight:600">${p.prob}%</span> prob. chuva<br>${p.chuva.toFixed(1)} mm previsto`,{direction:'top',offset:[0,-r]});
     circulos.push(c);
   });
 }
 
-function buildBar() {
+function buildDateBar() {
   const bar = document.getElementById('dateBar');
-  datas.forEach((data,i) => {
-    const {label,sub} = fmtDate(data);
-    const btn = document.createElement('button');
-    btn.className = 'date-btn'+(i===0?' active':'');
-    btn.innerHTML = `<span class="ds">${label}</span><span class="dn">${sub}</span>`;
-    btn.addEventListener('click',()=>renderDia(i));
+  datas.forEach((data,i)=>{
+    const {label,sub}=fmtBtn(data);
+    const btn=document.createElement('button');
+    btn.className='date-btn'+(i===0?' active':'');
+    btn.innerHTML=`<span class="ds">${label}</span><span class="dn">${sub}</span>`;
+    btn.addEventListener('click',()=>renderMapDia(i));
     bar.appendChild(btn);
   });
+}
+
+function renderBars() {
+  const dias = datas.map(data=>{
+    const pts=dadosPorDia[data]||[];
+    return { data, prob:Math.round(avg(pts.map(p=>p.prob))), chuva:avg(pts.map(p=>p.chuva)) };
+  });
+  const maxP = Math.max(...dias.map(d=>d.prob),1);
+  document.getElementById('barsWrap').innerHTML = dias.map(d=>{
+    const h = Math.max(Math.round((d.prob/maxP)*130),4);
+    const {label,sub} = fmtBtn(d.data);
+    return `<div class="bar-col">
+      <div class="bar-pct">${d.prob} %</div>
+      <div style="width:100%;display:flex;justify-content:center;">
+        <div class="bar-fill ${d.prob>=60?'high':''}" style="height:${h}px;width:80%;">
+          ${d.chuva>0?`<span class="bar-mm">${d.chuva.toFixed(1)} mm</span>`:''}
+        </div>
+      </div>
+      <div class="bar-date">${label==='Hoje'?'Hoje':sub}</div>
+    </div>`;
+  }).join('');
 }
 
 (async()=>{
   try {
     await fetchDados();
+    initMap();
+    renderCards();
+    renderTabela();
+    buildDateBar();
+    renderMapDia(0);
+    renderBars();
     document.getElementById('loading').style.display='none';
-    document.getElementById('status').textContent='Open-Meteo · atualizado agora';
-    buildBar();
-    renderDia(0);
   } catch(e) {
-    document.getElementById('loading').innerHTML='<p style="color:#e06060">Erro ao buscar previsão. Verifique a conexão.</p>';
+    document.getElementById('loading').innerHTML='<p style="color:#c0392b;font-size:14px">Erro ao buscar dados. Verifique a conexão.</p>';
+    console.error(e);
   }
 })();
 </script>
