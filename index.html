@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Previsão de Chuva — Fazendas</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0f1923; color: #e8edf2;
+  height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+}
+header {
+  padding: 10px 16px; background: #111d28;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+}
+header h1 { font-size: 14px; font-weight: 500; color: #c8d8e8; }
+#status   { font-size: 11px; color: #5a7a96; }
+.date-bar {
+  display: flex; gap: 6px; padding: 8px 12px; background: #111d28;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  overflow-x: auto; flex-shrink: 0; scrollbar-width: none;
+}
+.date-bar::-webkit-scrollbar { display: none; }
+.date-btn {
+  flex-shrink: 0; background: transparent;
+  border: 1px solid rgba(255,255,255,0.12); border-radius: 6px;
+  color: #7a9ab8; font-size: 11px; padding: 5px 10px;
+  cursor: pointer; text-align: center; min-width: 64px;
+}
+.date-btn:hover { background: rgba(255,255,255,0.06); color: #c8d8e8; }
+.date-btn.active { background: rgba(56,145,218,0.2); border-color: rgba(56,145,218,0.6); color: #7ac4f0; }
+.date-btn .ds { font-size: 10px; opacity: 0.7; display: block; }
+.date-btn .dn { font-size: 13px; font-weight: 500; }
+#map { flex: 1; }
+.leaflet-container { background: #182634; }
+.legend {
+  position: absolute; bottom: 20px; left: 12px; z-index: 1000;
+  background: rgba(17,29,40,0.92); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px; padding: 12px 14px;
+}
+.legend h3 { font-size: 10px; font-weight: 500; color: #5a7a96; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 9px; }
+.legend-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 11px; color: #7a9ab8; }
+.lc { border-radius: 50%; border: 1.5px solid rgba(100,180,255,0.5); background: rgba(56,145,218,0.3); flex-shrink: 0; }
+.tt { background: #0f1d2a !important; border: 1px solid rgba(56,145,218,0.35) !important; border-radius: 8px !important; color: #c8d8e8 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important; padding: 9px 13px !important; font-size: 12px !important; box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important; white-space: nowrap !important; }
+.tt::before { display: none !important; }
+.tt-n { font-weight: 500; color: #e8edf2; margin-bottom: 5px; font-size: 13px; }
+.tt-r { display: flex; align-items: center; gap: 8px; margin-top: 3px; }
+.tt-l { color: #5a7a96; font-size: 11px; min-width: 60px; }
+.loading-overlay {
+  position: absolute; inset: 0; background: rgba(15,25,35,0.88);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 2000; flex-direction: column; gap: 12px;
+}
+.spinner { width: 32px; height: 32px; border: 2px solid rgba(56,145,218,0.2); border-top-color: #3891da; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-overlay p { font-size: 13px; color: #5a7a96; }
+.leaflet-control-zoom a { background: #111d28 !important; color: #9ab5cc !important; border-color: rgba(255,255,255,0.1) !important; }
+.leaflet-control-attribution { background: rgba(17,29,40,0.7) !important; color: #3a5a72 !important; font-size: 10px !important; }
+.leaflet-control-attribution a { color: #3a5a72 !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>&#127783; Previsão de Chuva — Fazendas</h1>
+  <span id="status">carregando...</span>
+</header>
+<div class="date-bar" id="dateBar"></div>
+<div style="position:relative;flex:1;display:flex;flex-direction:column;">
+  <div id="map"></div>
+  <div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+    <p>Buscando previsão Open-Meteo...</p>
+  </div>
+  <div class="legend">
+    <h3>Probabilidade</h3>
+    <div class="legend-row"><div class="lc" style="width:10px;height:10px;"></div>&lt; 30%</div>
+    <div class="legend-row"><div class="lc" style="width:16px;height:16px;"></div>30 – 60%</div>
+    <div class="legend-row"><div class="lc" style="width:22px;height:22px;"></div>60 – 80%</div>
+    <div class="legend-row"><div class="lc" style="width:30px;height:30px;background:rgba(56,145,218,0.65);border-color:rgba(140,210,255,0.85);"></div>&gt; 80%</div>
+  </div>
+</div>
+<script>
+/* ============================================================
+   FAZENDAS — mesma lista do seu Power Query
+   Adicione ou remova locais aqui conforme necessário
+============================================================ */
+const FAZENDAS = [
+  { nome: "Dois Córregos", lat: -22.37,   lng: -48.38   },
+  { nome: "Barra Bonita",  lat: -22.49,   lng: -48.56   },
+  { nome: "Brotas",        lat: -22.28,   lng: -48.13   },
+  { nome: "São Carlos",    lat: -22.0087, lng: -47.8909 },
+  { nome: "Araraquara",    lat: -21.08,   lng: -47.32   },
+];
+
+const DIAS  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+function fmtDate(iso) {
+  const [y,m,d] = iso.split('-').map(Number);
+  const dt   = new Date(y, m-1, d);
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const label = dt.getTime()===hoje.getTime() ? 'Hoje' : DIAS[dt.getDay()];
+  return { label, sub: d+' '+MESES[m-1] };
+}
+
+function radius(p) { return 8 + (p/100)*32; }
+
+function style(p) {
+  if (p>=80) return { fill:'rgba(56,145,218,0.75)', stroke:'rgba(140,210,255,0.95)' };
+  if (p>=60) return { fill:'rgba(56,145,218,0.55)', stroke:'rgba(100,180,255,0.80)' };
+  if (p>=30) return { fill:'rgba(56,145,218,0.35)', stroke:'rgba(80,160,240,0.65)'  };
+  return           { fill:'rgba(56,145,218,0.18)', stroke:'rgba(80,150,220,0.45)'  };
+}
+
+function cor(p) {
+  if (p>=80) return '#3891da';
+  if (p>=60) return '#5aaae0';
+  if (p>=30) return '#7bbde6';
+  return '#9dcfec';
+}
+
+const map = L.map('map',{ center:[-22.1,-48.1], zoom:9 });
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+  attribution:'© OpenStreetMap · © CARTO', subdomains:'abcd', maxZoom:19
+}).addTo(map);
+
+let dados = {};
+let datas = [];
+let circulos = [];
+
+async function fetchDados() {
+  const lats = FAZENDAS.map(f=>f.lat).join(',');
+  const lngs = FAZENDAS.map(f=>f.lng).join(',');
+  const url  = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}`
+             + `&daily=rain_sum,precipitation_probability_max`
+             + `&timezone=America%2FSao_Paulo&forecast_days=7`;
+  const res  = await fetch(url);
+  const json = await res.json();
+  const lista = Array.isArray(json) ? json : [json];
+  lista.forEach((loc,i) => {
+    const f = FAZENDAS[i];
+    loc.daily.time.forEach((data,d) => {
+      if (!dados[data]) dados[data] = [];
+      dados[data].push({
+        nome:  f.nome, lat: f.lat, lng: f.lng,
+        prob:  loc.daily.precipitation_probability_max[d] ?? 0,
+        chuva: loc.daily.rain_sum[d] ?? 0,
+      });
+    });
+  });
+  datas = Object.keys(dados).sort();
+}
+
+function renderDia(idx) {
+  document.querySelectorAll('.date-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
+  circulos.forEach(c=>map.removeLayer(c));
+  circulos = [];
+  const data = datas[idx];
+  (dados[data]||[]).forEach(p => {
+    const s = style(p.prob);
+    const r = radius(p.prob);
+    const c = L.circleMarker([p.lat,p.lng],{
+      radius:r, fillColor:s.fill, fillOpacity:1, color:s.stroke, weight:1.5
+    }).addTo(map);
+    c.bindTooltip(
+      `<div class="tt-n">${p.nome}</div>`+
+      `<div class="tt-r"><span class="tt-l">Prob. chuva</span><span style="color:${cor(p.prob)};font-weight:500">${p.prob}%</span></div>`+
+      `<div class="tt-r"><span class="tt-l">Chuva</span><span style="font-weight:500">${p.chuva.toFixed(1)} mm</span></div>`+
+      `<div class="tt-r"><span class="tt-l">Data</span><span style="color:#5a7a96">${data}</span></div>`,
+      { className:'tt', direction:'top', offset:[0,-r] }
+    );
+    circulos.push(c);
+  });
+}
+
+function buildBar() {
+  const bar = document.getElementById('dateBar');
+  datas.forEach((data,i) => {
+    const {label,sub} = fmtDate(data);
+    const btn = document.createElement('button');
+    btn.className = 'date-btn'+(i===0?' active':'');
+    btn.innerHTML = `<span class="ds">${label}</span><span class="dn">${sub}</span>`;
+    btn.addEventListener('click',()=>renderDia(i));
+    bar.appendChild(btn);
+  });
+}
+
+(async()=>{
+  try {
+    await fetchDados();
+    document.getElementById('loading').style.display='none';
+    document.getElementById('status').textContent='Open-Meteo · atualizado agora';
+    buildBar();
+    renderDia(0);
+  } catch(e) {
+    document.getElementById('loading').innerHTML='<p style="color:#e06060">Erro ao buscar previsão. Verifique a conexão.</p>';
+  }
+})();
+</script>
+</body>
+</html>
