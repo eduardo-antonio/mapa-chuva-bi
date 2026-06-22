@@ -8,11 +8,12 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #f0f2f5; color: #2c3e50; min-height: 100vh; padding: 14px;
+  background: #f0f2f5; color: #2c3e50; padding: 14px;
 }
-.dash { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.dash { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
 .header { display: flex; justify-content: space-between; align-items: baseline; }
 .header h1 { font-size: 18px; font-weight: 600; color: #1a2535; }
 .header a  { font-size: 11px; color: #7a8fa6; text-decoration: none; }
@@ -22,19 +23,26 @@ body {
 .card-body  { padding: 10px 8px 8px; background: linear-gradient(135deg, #4d9de0 0%, #2979c8 100%); }
 .card-val   { font-size: 26px; font-weight: 700; color: #fff; line-height: 1; }
 .card-label { font-size: 10px; color: rgba(255,255,255,0.8); margin-top: 3px; }
-.middle { display: grid; grid-template-columns: 1fr 380px; gap: 12px; align-items: start; }
+
+.middle { display: grid; grid-template-columns: 1fr 420px; gap: 12px; align-items: start; }
+.right-col { display: flex; flex-direction: column; gap: 12px; }
+
 .table-box, .map-box, .chart-box { background: #fff; border: 1px solid #dde3ec; border-radius: 8px; overflow: hidden; }
 .box-title { font-size: 12px; font-weight: 600; color: #1a2535; padding: 9px 12px; border-bottom: 1px solid #dde3ec; background: #f8f9fb; }
-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-thead th { background: #e8edf5; color: #4a5a6e; font-weight: 600; font-size: 11px; padding: 6px 8px; text-align: right; border-bottom: 1px solid #dde3ec; }
-thead th:first-child { text-align: left; }
+
+/* Tabela compacta */
+table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; }
+thead th { background: #e8edf5; color: #4a5a6e; font-weight: 600; font-size: 10px; padding: 5px 6px; text-align: right; border-bottom: 1px solid #dde3ec; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+thead th:first-child { text-align: left; width: 76px; }
 tbody tr:nth-child(even) { background: #f8f9fb; }
-tbody td { padding: 5px 8px; text-align: right; border-bottom: 1px solid #f0f2f5; color: #2c3e50; }
+tbody td { padding: 4px 6px; text-align: right; border-bottom: 1px solid #f0f2f5; color: #2c3e50; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 tbody td:first-child { text-align: left; color: #4a5a6e; font-weight: 500; }
 .td-hi { color: #1565c0; font-weight: 600; }
 tfoot tr { background: #e8edf5; }
-tfoot td { padding: 6px 8px; text-align: right; font-weight: 700; font-size: 12px; color: #1a2535; border-top: 2px solid #c5d0e0; }
+tfoot td { padding: 5px 6px; text-align: right; font-weight: 700; font-size: 11px; color: #1a2535; border-top: 2px solid #c5d0e0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 tfoot td:first-child { text-align: left; }
+
+/* Mapa grande */
 .date-bar { display: flex; gap: 4px; padding: 7px 8px; background: #f8f9fb; border-bottom: 1px solid #dde3ec; overflow-x: auto; scrollbar-width: none; }
 .date-bar::-webkit-scrollbar { display: none; }
 .date-btn { flex-shrink: 0; background: transparent; border: 1px solid #dde3ec; border-radius: 5px; color: #7a8fa6; font-size: 10px; padding: 3px 7px; cursor: pointer; text-align: center; min-width: 48px; line-height: 1.3; }
@@ -42,18 +50,21 @@ tfoot td:first-child { text-align: left; }
 .date-btn.active { background: #2979c8; border-color: #2979c8; color: #fff; }
 .date-btn .ds { display: block; font-size: 9px; opacity: 0.85; }
 .date-btn .dn { display: block; font-size: 11px; font-weight: 600; }
-#map { height: 280px; }
+#map { height: 360px; }
 .map-legend { padding: 8px 12px; background: #f8f9fb; border-top: 1px solid #dde3ec; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .map-legend span { font-size: 10px; color: #4a5a6e; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
 .leg-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: #7a8fa6; }
 .leg-dot  { border-radius: 50%; border: 1.5px solid; flex-shrink: 0; }
-.bars-wrap { padding: 12px 16px 8px; display: flex; align-items: flex-end; gap: 10px; height: 180px; }
-.bar-col   { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; gap: 4px; }
-.bar-pct   { font-size: 11px; font-weight: 600; color: #4a5a6e; }
-.bar-fill  { width: 100%; max-width: 64px; background: #b0c8e8; border-radius: 4px 4px 0 0; min-height: 4px; display: flex; align-items: center; justify-content: center; }
+
+/* Gráfico */
+.bars-wrap { padding: 10px 12px 8px; display: flex; align-items: flex-end; gap: 8px; height: 130px; }
+.bar-col   { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; gap: 3px; }
+.bar-pct   { font-size: 10px; font-weight: 600; color: #4a5a6e; }
+.bar-fill  { width: 100%; max-width: 56px; background: #b0c8e8; border-radius: 4px 4px 0 0; min-height: 4px; display: flex; align-items: center; justify-content: center; }
 .bar-fill.high { background: #4d9de0; }
-.bar-mm   { font-size: 10px; font-weight: 700; color: #fff; white-space: nowrap; }
-.bar-date { font-size: 10px; color: #7a8fa6; text-align: center; white-space: nowrap; }
+.bar-mm   { font-size: 9px; font-weight: 700; color: #fff; white-space: nowrap; }
+.bar-date { font-size: 9px; color: #7a8fa6; text-align: center; white-space: nowrap; }
+
 .loading { position: fixed; inset: 0; background: rgba(240,242,245,0.93); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; gap: 12px; }
 .spinner { width: 36px; height: 36px; border: 3px solid #dde3ec; border-top-color: #2979c8; border-radius: 50%; animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -78,11 +89,7 @@ tfoot td:first-child { text-align: left; }
   <div class="cards" id="cards"></div>
 
   <div class="middle">
-    <div class="table-box">
-      <div class="box-title">Previsão de Chuva (mm) Por Regionais Próximos 7 Dias</div>
-      <div style="overflow-x:auto;"><table id="tabela"></table></div>
-    </div>
-
+    <!-- Mapa grande à esquerda -->
     <div class="map-box">
       <div class="date-bar" id="dateBar"></div>
       <div id="map"></div>
@@ -94,11 +101,19 @@ tfoot td:first-child { text-align: left; }
         <div class="leg-item"><div class="leg-dot" style="width:22px;height:22px;background:rgba(41,121,200,0.88);border-color:#2979c8;"></div>&gt; 80%</div>
       </div>
     </div>
-  </div>
 
-  <div class="chart-box">
-    <div class="box-title">Previsão Média de Probabilidade de Chuva nos Próximos 7 Dias</div>
-    <div class="bars-wrap" id="barsWrap"></div>
+    <!-- Tabela + gráfico à direita -->
+    <div class="right-col">
+      <div class="table-box">
+        <div class="box-title">Previsão de Chuva (mm) Por Regional — 7 Dias</div>
+        <div style="overflow-x:auto;"><table id="tabela"></table></div>
+      </div>
+
+      <div class="chart-box">
+        <div class="box-title">Prob. Média de Chuva — 7 Dias</div>
+        <div class="bars-wrap" id="barsWrap"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -108,7 +123,7 @@ const FAZENDAS = [
   { nome: "Barra Bonita",  lat: -22.49,   lng: -48.56   },
   { nome: "Brotas",        lat: -22.28,   lng: -48.13   },
   { nome: "São Carlos",    lat: -22.0087, lng: -47.8909 },
-  { nome: "Araraquara",    lat: -21.08,   lng: -47.32   },
+  { nome: "Araraquara",    lat: -21.79106,   lng: -48.17591},
 ];
 
 const DIAS  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
@@ -164,13 +179,13 @@ function renderTabela() {
     const vals = nomes.map(n => { const p=pts.find(x=>x.nome===n); return p?p.chuva:0; });
     vals.forEach((v,i)=>totF[nomes[i]]+=v);
     const med = avg(vals);
-    rows += `<tr><td>${fmtISO(data)}</td>${vals.map(v=>`<td class="${v>5?'td-hi':''}">${v.toFixed(2)}</td>`).join('')}<td class="${med>5?'td-hi':''}">${med.toFixed(2)}</td></tr>`;
+    rows += `<tr><td>${fmtISO(data)}</td>${vals.map(v=>`<td class="${v>5?'td-hi':''}">${v.toFixed(1)}</td>`).join('')}<td class="${med>5?'td-hi':''}">${med.toFixed(1)}</td></tr>`;
   });
   const tVals = nomes.map(n=>totF[n]);
   document.getElementById('tabela').innerHTML =
-    `<thead><tr><th>Data</th>${nomes.map(n=>`<th>${n}</th>`).join('')}<th>Total</th></tr></thead>`+
+    `<thead><tr><th>Data</th>${nomes.map(n=>`<th>${n.split(' ')[0]}</th>`).join('')}<th>Méd.</th></tr></thead>`+
     `<tbody>${rows}</tbody>`+
-    `<tfoot><tr><td>Total</td>${tVals.map(v=>`<td>${v.toFixed(2)}</td>`).join('')}<td>${avg(tVals).toFixed(2)}</td></tr></tfoot>`;
+    `<tfoot><tr><td>Total</td>${tVals.map(v=>`<td>${v.toFixed(1)}</td>`).join('')}<td>${avg(tVals).toFixed(1)}</td></tr></tfoot>`;
 }
 
 function initMap() {
@@ -215,13 +230,13 @@ function renderBars() {
   });
   const maxP = Math.max(...dias.map(d=>d.prob),1);
   document.getElementById('barsWrap').innerHTML = dias.map(d=>{
-    const h = Math.max(Math.round((d.prob/maxP)*130),4);
+    const h = Math.max(Math.round((d.prob/maxP)*95),4);
     const {label,sub} = fmtBtn(d.data);
     return `<div class="bar-col">
-      <div class="bar-pct">${d.prob} %</div>
+      <div class="bar-pct">${d.prob}%</div>
       <div style="width:100%;display:flex;justify-content:center;">
-        <div class="bar-fill ${d.prob>=60?'high':''}" style="height:${h}px;width:80%;">
-          ${d.chuva>0?`<span class="bar-mm">${d.chuva.toFixed(1)} mm</span>`:''}
+        <div class="bar-fill ${d.prob>=60?'high':''}" style="height:${h}px;width:85%;">
+          ${d.chuva>0?`<span class="bar-mm">${d.chuva.toFixed(1)}</span>`:''}
         </div>
       </div>
       <div class="bar-date">${label==='Hoje'?'Hoje':sub}</div>
