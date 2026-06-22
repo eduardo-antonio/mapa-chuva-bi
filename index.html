@@ -3,46 +3,76 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Previsão de Chuva</title>
+<title>Monitoramento Pluviométrico — Baldan</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { width: 100%; height: 100%; overflow: hidden; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #f0f2f5; color: #2c3e50; padding: 14px;
+  background: #eef1f6; color: #2c3e50; min-height: 100vh; padding: 14px;
 }
-.dash { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
-.header { display: flex; justify-content: space-between; align-items: baseline; }
-.header h1 { font-size: 18px; font-weight: 600; color: #1a2535; }
-.header a  { font-size: 11px; color: #7a8fa6; text-decoration: none; }
+.dash { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+
+/* HEADER */
+.header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.header-left { display: flex; align-items: center; gap: 14px; }
+.header h1 { font-size: 20px; font-weight: 700; color: #1a2535; }
+.header-meta { display: flex; flex-direction: column; gap: 2px; }
+.header-meta a { font-size: 11px; color: #7a8fa6; text-decoration: none; }
+.last-update { font-size: 10px; color: #7a8fa6; }
+.logo-area img { height: 38px; }
+
+/* REGION CARDS */
 .cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
-.card { background: #fff; border: 1px solid #dde3ec; border-radius: 8px; overflow: hidden; text-align: center; }
+.card { background: #fff; border: 1px solid #dde3ec; border-radius: 10px; overflow: hidden; text-align: center; }
 .card-title { font-size: 11px; font-weight: 600; color: #4a5a6e; padding: 7px 8px 6px; border-bottom: 1px solid #dde3ec; background: #f8f9fb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-body  { padding: 10px 8px 8px; background: linear-gradient(135deg, #4d9de0 0%, #2979c8 100%); }
 .card-val   { font-size: 26px; font-weight: 700; color: #fff; line-height: 1; }
 .card-label { font-size: 10px; color: rgba(255,255,255,0.8); margin-top: 3px; }
 
-.middle { display: grid; grid-template-columns: 1fr 420px; gap: 12px; align-items: start; }
-.right-col { display: flex; flex-direction: column; gap: 12px; }
+/* ALERT BANNER */
+.alert-banner { border-radius: 8px; padding: 9px 14px; font-size: 12px; font-weight: 600; display: none; align-items: center; gap: 8px; }
+.alert-banner.show { display: flex; }
+.alert-danger  { background: #fff0f0; border: 1px solid #f5c6c6; color: #b02020; }
+.alert-warning { background: #fff8e1; border: 1px solid #ffe082; color: #8a6000; }
+.alert-ok      { background: #f0faf4; border: 1px solid #b2dfcc; color: #1a6640; }
 
-.table-box, .map-box, .chart-box { background: #fff; border: 1px solid #dde3ec; border-radius: 8px; overflow: hidden; }
-.box-title { font-size: 12px; font-weight: 600; color: #1a2535; padding: 9px 12px; border-bottom: 1px solid #dde3ec; background: #f8f9fb; }
+/* EXTRA METRICS ROW */
+.metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.metric-card { background: #fff; border: 1px solid #dde3ec; border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; }
+.metric-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.metric-icon.blue   { background: #e3f0fd; color: #2979c8; }
+.metric-icon.green  { background: #e8f5e9; color: #2e7d32; }
+.metric-icon.orange { background: #fff3e0; color: #e65100; }
+.metric-icon.teal   { background: #e0f4f1; color: #00695c; }
+.metric-body {}
+.metric-label { font-size: 10px; color: #7a8fa6; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.metric-val   { font-size: 18px; font-weight: 700; color: #1a2535; line-height: 1.2; }
+.metric-sub   { font-size: 10px; color: #7a8fa6; }
 
-/* Tabela compacta */
-table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; }
-thead th { background: #e8edf5; color: #4a5a6e; font-weight: 600; font-size: 10px; padding: 5px 6px; text-align: right; border-bottom: 1px solid #dde3ec; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-thead th:first-child { text-align: left; width: 76px; }
+/* MAIN GRID */
+.middle { display: grid; grid-template-columns: 1fr 390px; gap: 12px; align-items: start; }
+.table-box, .map-box, .chart-box { background: #fff; border: 1px solid #dde3ec; border-radius: 10px; overflow: hidden; }
+.box-title { font-size: 12px; font-weight: 600; color: #1a2535; padding: 9px 12px; border-bottom: 1px solid #dde3ec; background: #f8f9fb; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.box-title .export-btn { font-size: 10px; font-weight: 500; background: #eef1f6; border: 1px solid #dde3ec; border-radius: 5px; padding: 3px 8px; cursor: pointer; color: #4a5a6e; white-space: nowrap; }
+.box-title .export-btn:hover { background: #e0e5ef; }
+
+/* TABLE */
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead th { background: #e8edf5; color: #4a5a6e; font-weight: 600; font-size: 11px; padding: 6px 8px; text-align: right; border-bottom: 1px solid #dde3ec; }
+thead th:first-child { text-align: left; }
 tbody tr:nth-child(even) { background: #f8f9fb; }
-tbody td { padding: 4px 6px; text-align: right; border-bottom: 1px solid #f0f2f5; color: #2c3e50; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+tbody td { padding: 5px 8px; text-align: right; border-bottom: 1px solid #f0f2f5; color: #2c3e50; }
 tbody td:first-child { text-align: left; color: #4a5a6e; font-weight: 500; }
-.td-hi { color: #1565c0; font-weight: 600; }
+.td-hi    { color: #1565c0; font-weight: 600; }
+.td-alert { background: #fff3cd !important; color: #8a6000 !important; font-weight: 700; }
+.td-danger{ background: #fde8e8 !important; color: #b02020 !important; font-weight: 700; }
 tfoot tr { background: #e8edf5; }
-tfoot td { padding: 5px 6px; text-align: right; font-weight: 700; font-size: 11px; color: #1a2535; border-top: 2px solid #c5d0e0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+tfoot td { padding: 6px 8px; text-align: right; font-weight: 700; font-size: 12px; color: #1a2535; border-top: 2px solid #c5d0e0; }
 tfoot td:first-child { text-align: left; }
 
-/* Mapa grande */
+/* MAP */
 .date-bar { display: flex; gap: 4px; padding: 7px 8px; background: #f8f9fb; border-bottom: 1px solid #dde3ec; overflow-x: auto; scrollbar-width: none; }
 .date-bar::-webkit-scrollbar { display: none; }
 .date-btn { flex-shrink: 0; background: transparent; border: 1px solid #dde3ec; border-radius: 5px; color: #7a8fa6; font-size: 10px; padding: 3px 7px; cursor: pointer; text-align: center; min-width: 48px; line-height: 1.3; }
@@ -50,27 +80,63 @@ tfoot td:first-child { text-align: left; }
 .date-btn.active { background: #2979c8; border-color: #2979c8; color: #fff; }
 .date-btn .ds { display: block; font-size: 9px; opacity: 0.85; }
 .date-btn .dn { display: block; font-size: 11px; font-weight: 600; }
-#map { height: 360px; }
+#map { height: 290px; }
 .map-legend { padding: 8px 12px; background: #f8f9fb; border-top: 1px solid #dde3ec; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .map-legend span { font-size: 10px; color: #4a5a6e; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
 .leg-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: #7a8fa6; }
 .leg-dot  { border-radius: 50%; border: 1.5px solid; flex-shrink: 0; }
 
-/* Gráfico */
-.bars-wrap { padding: 10px 12px 8px; display: flex; align-items: flex-end; gap: 8px; height: 130px; }
-.bar-col   { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; gap: 3px; }
-.bar-pct   { font-size: 10px; font-weight: 600; color: #4a5a6e; }
-.bar-fill  { width: 100%; max-width: 56px; background: #b0c8e8; border-radius: 4px 4px 0 0; min-height: 4px; display: flex; align-items: center; justify-content: center; }
-.bar-fill.high { background: #4d9de0; }
-.bar-mm   { font-size: 9px; font-weight: 700; color: #fff; white-space: nowrap; }
-.bar-date { font-size: 9px; color: #7a8fa6; text-align: center; white-space: nowrap; }
+/* BOTTOM GRID */
+.bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
-.loading { position: fixed; inset: 0; background: rgba(240,242,245,0.93); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; gap: 12px; }
+/* BAR CHART */
+.bars-wrap { padding: 12px 16px 8px; display: flex; align-items: flex-end; gap: 10px; height: 180px; }
+.bar-col   { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; gap: 4px; }
+.bar-pct   { font-size: 11px; font-weight: 600; color: #4a5a6e; }
+.bar-fill  { width: 100%; max-width: 64px; background: #b0c8e8; border-radius: 4px 4px 0 0; min-height: 4px; display: flex; align-items: center; justify-content: center; }
+.bar-fill.high { background: #4d9de0; }
+.bar-fill.danger { background: #e05050; }
+.bar-mm   { font-size: 10px; font-weight: 700; color: #fff; white-space: nowrap; }
+.bar-date { font-size: 10px; color: #7a8fa6; text-align: center; white-space: nowrap; }
+
+/* JANELA DE OPERAÇÃO */
+.op-window { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.op-day { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 7px; border: 1px solid #eee; }
+.op-day.ok     { background: #f0faf4; border-color: #c3e6cb; }
+.op-day.warn   { background: #fff8e1; border-color: #ffe082; }
+.op-day.danger { background: #fde8e8; border-color: #f5c6c6; }
+.op-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.op-dot.ok     { background: #2e7d32; }
+.op-dot.warn   { background: #f59f00; }
+.op-dot.danger { background: #c0392b; }
+.op-day-name { font-size: 11px; font-weight: 600; color: #2c3e50; min-width: 68px; }
+.op-tags { display: flex; gap: 5px; flex-wrap: wrap; flex: 1; }
+.op-tag { font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 500; }
+.op-tag.green  { background: #e8f5e9; color: #2e7d32; }
+.op-tag.orange { background: #fff3e0; color: #e65100; }
+.op-tag.red    { background: #fde8e8; color: #c0392b; }
+
+/* LOADING */
+.loading { position: fixed; inset: 0; background: rgba(238,241,246,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; gap: 12px; }
 .spinner { width: 36px; height: 36px; border: 3px solid #dde3ec; border-top-color: #2979c8; border-radius: 50%; animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .loading p { font-size: 13px; color: #7a8fa6; }
+
+/* LEAFLET */
 .leaflet-control-zoom a { background: #fff !important; color: #4a5a6e !important; border-color: #dde3ec !important; }
 .leaflet-control-attribution { background: rgba(255,255,255,0.8) !important; font-size: 9px !important; }
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .cards { grid-template-columns: repeat(3, 1fr); }
+  .metrics-row { grid-template-columns: repeat(2, 1fr); }
+  .middle { grid-template-columns: 1fr; }
+  .bottom-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 540px) {
+  .cards { grid-template-columns: repeat(2, 1fr); }
+  .metrics-row { grid-template-columns: 1fr 1fr; }
+}
 </style>
 </head>
 <body>
@@ -81,15 +147,42 @@ tfoot td:first-child { text-align: left; }
 </div>
 
 <div class="dash">
+
+  <!-- HEADER -->
   <div class="header">
-    <h1>Previsão de Chuva Amanhã</h1>
-    <a href="https://open-meteo.com" target="_blank">fonte: https://open-meteo.com</a>
+    <div class="header-left">
+      <div>
+        <h1>🌧 Monitoramento Pluviométrico</h1>
+        <div class="header-meta">
+          <a href="https://open-meteo.com" target="_blank">fonte: https://open-meteo.com</a>
+          <span class="last-update" id="lastUpdate"></span>
+        </div>
+      </div>
+    </div>
   </div>
 
+  <!-- ALERT BANNER -->
+  <div class="alert-banner" id="alertBanner"></div>
+
+  <!-- REGION CARDS (amanhã) -->
+  <div class="box-title" style="background:#fff;border:1px solid #dde3ec;border-radius:10px;padding:9px 14px;">
+    Previsão de Chuva Amanhã — Probabilidade por Regional
+  </div>
   <div class="cards" id="cards"></div>
 
+  <!-- EXTRA METRICS -->
+  <div class="metrics-row" id="metricsRow"></div>
+
+  <!-- MAIN GRID: tabela + mapa -->
   <div class="middle">
-    <!-- Mapa grande à esquerda -->
+    <div class="table-box">
+      <div class="box-title">
+        Previsão de Chuva (mm) Por Regional — 7 Dias
+        <button class="export-btn" onclick="exportCSV()">⬇ Exportar CSV</button>
+      </div>
+      <div style="overflow-x:auto;"><table id="tabela"></table></div>
+    </div>
+
     <div class="map-box">
       <div class="date-bar" id="dateBar"></div>
       <div id="map"></div>
@@ -101,21 +194,22 @@ tfoot td:first-child { text-align: left; }
         <div class="leg-item"><div class="leg-dot" style="width:22px;height:22px;background:rgba(41,121,200,0.88);border-color:#2979c8;"></div>&gt; 80%</div>
       </div>
     </div>
+  </div>
 
-    <!-- Tabela + gráfico à direita -->
-    <div class="right-col">
-      <div class="table-box">
-        <div class="box-title">Previsão de Chuva (mm) Por Regional — 7 Dias</div>
-        <div style="overflow-x:auto;"><table id="tabela"></table></div>
-      </div>
+  <!-- BOTTOM: gráfico + janela de operação -->
+  <div class="bottom-grid">
+    <div class="chart-box">
+      <div class="box-title">Prob. Média de Chuva — 7 Dias</div>
+      <div class="bars-wrap" id="barsWrap"></div>
+    </div>
 
-      <div class="chart-box">
-        <div class="box-title">Prob. Média de Chuva — 7 Dias</div>
-        <div class="bars-wrap" id="barsWrap"></div>
-      </div>
+    <div class="chart-box">
+      <div class="box-title">Janela de Operação — Pulverização / Colheita</div>
+      <div class="op-window" id="opWindow"></div>
     </div>
   </div>
-</div>
+
+</div><!-- /.dash -->
 
 <script>
 const FAZENDAS = [
@@ -123,7 +217,7 @@ const FAZENDAS = [
   { nome: "Barra Bonita",  lat: -22.49,   lng: -48.56   },
   { nome: "Brotas",        lat: -22.28,   lng: -48.13   },
   { nome: "São Carlos",    lat: -22.0087, lng: -47.8909 },
-  { nome: "Araraquara",    lat: -21.79106,   lng: -48.17591},
+  { nome: "Araraquara",    lat: -21.08,   lng: -47.32   },
 ];
 
 const DIAS  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
@@ -133,41 +227,154 @@ function fmtISO(iso) {
   const [y,m,d] = iso.split('-').map(Number);
   return `${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`;
 }
-
 function fmtBtn(iso) {
   const [y,m,d] = iso.split('-').map(Number);
   const dt = new Date(y,m-1,d);
   const hj = new Date(); hj.setHours(0,0,0,0);
-  return { label: dt.getTime()===hj.getTime() ? 'Hoje' : DIAS[dt.getDay()], sub: `${d} ${MESES[m-1]}` };
+  const isHoje = dt.getTime()===hj.getTime();
+  return { label: isHoje ? 'Hoje' : DIAS[dt.getDay()], sub: `${d} ${MESES[m-1]}`, isHoje };
 }
-
 function avg(arr) { return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
 
-let dadosPorDia = {}, datas = [], circulos = [], map;
+let dadosPorDia = {}, dadosExtra = {}, datas = [], circulos = [], map;
 
 async function fetchDados() {
   const lats = FAZENDAS.map(f=>f.lat).join(',');
   const lngs = FAZENDAS.map(f=>f.lng).join(',');
-  const url  = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}`
-             + `&daily=rain_sum,precipitation_probability_max&timezone=America%2FSao_Paulo&forecast_days=7`;
-  const json = await (await fetch(url)).json();
-  const lista = Array.isArray(json) ? json : [json];
-  lista.forEach((loc,i) => {
+
+  // Chuva + prob
+  const urlChuva = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}`
+    + `&daily=rain_sum,precipitation_probability_max&timezone=America%2FSao_Paulo&forecast_days=7`;
+  const jsonChuva = await (await fetch(urlChuva)).json();
+  const listaChuva = Array.isArray(jsonChuva) ? jsonChuva : [jsonChuva];
+
+  // Temperatura + vento + umidade
+  const urlExtra = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}`
+    + `&daily=temperature_2m_max,temperature_2m_min,windspeed_10m_max,relative_humidity_2m_max`
+    + `&timezone=America%2FSao_Paulo&forecast_days=7`;
+  const jsonExtra = await (await fetch(urlExtra)).json();
+  const listaExtra = Array.isArray(jsonExtra) ? jsonExtra : [jsonExtra];
+
+  listaChuva.forEach((loc, i) => {
     const f = FAZENDAS[i];
-    loc.daily.time.forEach((data,d) => {
+    const ex = listaExtra[i];
+    loc.daily.time.forEach((data, d) => {
       if (!dadosPorDia[data]) dadosPorDia[data] = [];
-      dadosPorDia[data].push({ nome:f.nome, lat:f.lat, lng:f.lng, prob:loc.daily.precipitation_probability_max[d]??0, chuva:loc.daily.rain_sum[d]??0 });
+      dadosPorDia[data].push({
+        nome: f.nome, lat: f.lat, lng: f.lng,
+        prob: loc.daily.precipitation_probability_max[d] ?? 0,
+        chuva: loc.daily.rain_sum[d] ?? 0,
+        tmax: ex?.daily?.temperature_2m_max?.[d] ?? null,
+        tmin: ex?.daily?.temperature_2m_min?.[d] ?? null,
+        vento: ex?.daily?.windspeed_10m_max?.[d] ?? null,
+        umidade: ex?.daily?.relative_humidity_2m_max?.[d] ?? null,
+      });
     });
   });
+
   datas = Object.keys(dadosPorDia).sort();
+
+  // Computa médias diárias extras
+  datas.forEach(data => {
+    const pts = dadosPorDia[data] || [];
+    dadosExtra[data] = {
+      tmax:    avg(pts.map(p=>p.tmax).filter(v=>v!==null)),
+      tmin:    avg(pts.map(p=>p.tmin).filter(v=>v!==null)),
+      vento:   avg(pts.map(p=>p.vento).filter(v=>v!==null)),
+      umidade: avg(pts.map(p=>p.umidade).filter(v=>v!==null)),
+      prob:    avg(pts.map(p=>p.prob)),
+      chuva:   avg(pts.map(p=>p.chuva)),
+    };
+  });
+
+  document.getElementById('lastUpdate').textContent =
+    'Atualizado: ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+}
+
+function renderAlertBanner() {
+  const amanhaDia = datas[1] || datas[0];
+  if (!amanhaDia) return;
+  const pts = dadosPorDia[amanhaDia] || [];
+  const maxProb = Math.max(...pts.map(p=>p.prob));
+  const banner = document.getElementById('alertBanner');
+  if (maxProb >= 80) {
+    banner.className = 'alert-banner alert-danger show';
+    banner.innerHTML = `⚠️ <strong>Alerta:</strong> Alta probabilidade de chuva amanhã em pelo menos uma regional (${maxProb}%). Evite pulverização e colheita.`;
+  } else if (maxProb >= 50) {
+    banner.className = 'alert-banner alert-warning show';
+    banner.innerHTML = `⚡ <strong>Atenção:</strong> Probabilidade moderada de chuva amanhã (${maxProb}%). Monitore a previsão antes de operar.`;
+  } else {
+    banner.className = 'alert-banner alert-ok show';
+    banner.innerHTML = `✅ <strong>Condições favoráveis</strong> amanhã — probabilidade de chuva baixa (${maxProb}%).`;
+  }
 }
 
 function renderCards() {
-  const pontos = dadosPorDia[datas[1]||datas[0]] || [];
+  const amanha = datas[1] || datas[0];
+  const pontos = dadosPorDia[amanha] || [];
   document.getElementById('cards').innerHTML = FAZENDAS.map(f => {
-    const p = pontos.find(x=>x.nome===f.nome)||{prob:0};
-    return `<div class="card"><div class="card-title">${f.nome}</div><div class="card-body"><div class="card-val">${p.prob} %</div><div class="card-label">Prob. (%)</div></div></div>`;
+    const p = pontos.find(x=>x.nome===f.nome) || {prob:0};
+    const cor = p.prob >= 80 ? 'linear-gradient(135deg,#e05050,#c0392b)'
+              : p.prob >= 50 ? 'linear-gradient(135deg,#f0a500,#d68910)'
+              : 'linear-gradient(135deg,#4d9de0,#2979c8)';
+    return `<div class="card">
+      <div class="card-title">${f.nome}</div>
+      <div class="card-body" style="background:${cor}">
+        <div class="card-val">${p.prob} %</div>
+        <div class="card-label">Prob. (%)</div>
+      </div>
+    </div>`;
   }).join('');
+}
+
+function renderMetrics() {
+  const hoje = dadosExtra[datas[0]] || {};
+  const amanha = dadosExtra[datas[1]] || {};
+  const tmax  = amanha.tmax  != null ? amanha.tmax.toFixed(1)  : '--';
+  const tmin  = amanha.tmin  != null ? amanha.tmin.toFixed(1)  : '--';
+  const vento = amanha.vento != null ? amanha.vento.toFixed(0) : '--';
+  const umid  = amanha.umidade != null ? Math.round(amanha.umidade) : '--';
+
+  // Acumulado semana
+  const totalSemana = datas.reduce((sum, d) => {
+    const pts = dadosPorDia[d] || [];
+    return sum + avg(pts.map(p=>p.chuva));
+  }, 0);
+
+  document.getElementById('metricsRow').innerHTML = `
+    <div class="metric-card">
+      <div class="metric-icon blue">🌡</div>
+      <div class="metric-body">
+        <div class="metric-label">Temp. amanhã</div>
+        <div class="metric-val">${tmax}°C</div>
+        <div class="metric-sub">Mín: ${tmin}°C</div>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon orange">💨</div>
+      <div class="metric-body">
+        <div class="metric-label">Vento máx amanhã</div>
+        <div class="metric-val">${vento} km/h</div>
+        <div class="metric-sub">${parseFloat(vento)>20 ? '⚠ Desfavorável p/ pulverização' : 'Favorável p/ operação'}</div>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon teal">💧</div>
+      <div class="metric-body">
+        <div class="metric-label">Umidade amanhã</div>
+        <div class="metric-val">${umid}%</div>
+        <div class="metric-sub">${parseFloat(umid)>80 ? 'Risco fúngico elevado' : 'Dentro do normal'}</div>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon green">📊</div>
+      <div class="metric-body">
+        <div class="metric-label">Acumulado 7 dias</div>
+        <div class="metric-val">${totalSemana.toFixed(1)} mm</div>
+        <div class="metric-sub">Média por regional</div>
+      </div>
+    </div>
+  `;
 }
 
 function renderTabela() {
@@ -175,11 +382,16 @@ function renderTabela() {
   const totF  = Object.fromEntries(nomes.map(n=>[n,0]));
   let rows = '';
   datas.forEach(data => {
-    const pts  = dadosPorDia[data]||[];
-    const vals = nomes.map(n => { const p=pts.find(x=>x.nome===n); return p?p.chuva:0; });
-    vals.forEach((v,i)=>totF[nomes[i]]+=v);
+    const pts  = dadosPorDia[data] || [];
+    const vals = nomes.map(n => { const p=pts.find(x=>x.nome===n); return p ? p.chuva : 0; });
+    vals.forEach((v,i) => totF[nomes[i]] += v);
     const med = avg(vals);
-    rows += `<tr><td>${fmtISO(data)}</td>${vals.map(v=>`<td class="${v>5?'td-hi':''}">${v.toFixed(1)}</td>`).join('')}<td class="${med>5?'td-hi':''}">${med.toFixed(1)}</td></tr>`;
+    const prob = avg((dadosPorDia[data]||[]).map(p=>p.prob));
+    const rowClass = prob >= 80 ? 'style="background:#fde8e8"' : prob >= 50 ? 'style="background:#fff8e1"' : '';
+    rows += `<tr ${rowClass}><td>${fmtISO(data)}</td>${vals.map(v=>{
+      const cls = v > 8 ? 'td-danger' : v > 4 ? 'td-alert' : v > 0 ? 'td-hi' : '';
+      return `<td class="${cls}">${v.toFixed(1)}</td>`;
+    }).join('')}<td class="${med>4?'td-hi':''}">${med.toFixed(1)}</td></tr>`;
   });
   const tVals = nomes.map(n=>totF[n]);
   document.getElementById('tabela').innerHTML =
@@ -189,8 +401,8 @@ function renderTabela() {
 }
 
 function initMap() {
-  map = L.map('map',{center:[-22.1,-48.1],zoom:8});
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+  map = L.map('map', {center:[-22.1,-48.1], zoom:8});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
     attribution:'© OpenStreetMap · © CARTO', subdomains:'abcd', maxZoom:19
   }).addTo(map);
 }
@@ -206,37 +418,46 @@ function renderMapDia(idx) {
   (dadosPorDia[datas[idx]]||[]).forEach(p=>{
     const s=bStyle(p.prob), r=7+(p.prob/100)*24;
     const c=L.circleMarker([p.lat,p.lng],{radius:r,fillColor:s.fill,fillOpacity:1,color:s.stroke,weight:1.5}).addTo(map);
-    c.bindTooltip(`<b>${p.nome}</b><br><span style="color:#2979c8;font-weight:600">${p.prob}%</span> prob. chuva<br>${p.chuva.toFixed(1)} mm previsto`,{direction:'top',offset:[0,-r]});
+    const ex = dadosExtra[datas[idx]] || {};
+    const tmaxPt = p.tmax != null ? `${p.tmax.toFixed(1)}°C` : '--';
+    const ventoPt = p.vento != null ? `${p.vento.toFixed(0)} km/h` : '--';
+    c.bindTooltip(`
+      <b>${p.nome}</b><br>
+      <span style="color:#2979c8;font-weight:600">${p.prob}%</span> prob. chuva<br>
+      ${p.chuva.toFixed(1)} mm previsto<br>
+      🌡 ${tmaxPt} &nbsp; 💨 ${ventoPt}
+    `, {direction:'top', offset:[0,-r]});
     circulos.push(c);
   });
 }
 
 function buildDateBar() {
   const bar = document.getElementById('dateBar');
-  datas.forEach((data,i)=>{
-    const {label,sub}=fmtBtn(data);
-    const btn=document.createElement('button');
-    btn.className='date-btn'+(i===0?' active':'');
-    btn.innerHTML=`<span class="ds">${label}</span><span class="dn">${sub}</span>`;
-    btn.addEventListener('click',()=>renderMapDia(i));
+  datas.forEach((data,i) => {
+    const {label,sub} = fmtBtn(data);
+    const btn = document.createElement('button');
+    btn.className = 'date-btn' + (i===0?' active':'');
+    btn.innerHTML = `<span class="ds">${label}</span><span class="dn">${sub}</span>`;
+    btn.addEventListener('click', ()=>renderMapDia(i));
     bar.appendChild(btn);
   });
 }
 
 function renderBars() {
-  const dias = datas.map(data=>{
-    const pts=dadosPorDia[data]||[];
+  const dias = datas.map(data => {
+    const pts = dadosPorDia[data]||[];
     return { data, prob:Math.round(avg(pts.map(p=>p.prob))), chuva:avg(pts.map(p=>p.chuva)) };
   });
-  const maxP = Math.max(...dias.map(d=>d.prob),1);
-  document.getElementById('barsWrap').innerHTML = dias.map(d=>{
-    const h = Math.max(Math.round((d.prob/maxP)*95),4);
-    const {label,sub} = fmtBtn(d.data);
+  const maxP = Math.max(...dias.map(d=>d.prob), 1);
+  document.getElementById('barsWrap').innerHTML = dias.map(d => {
+    const h = Math.max(Math.round((d.prob/maxP)*130), 4);
+    const {label, sub} = fmtBtn(d.data);
+    const cls = d.prob>=80?'danger':d.prob>=60?'high':'';
     return `<div class="bar-col">
       <div class="bar-pct">${d.prob}%</div>
       <div style="width:100%;display:flex;justify-content:center;">
-        <div class="bar-fill ${d.prob>=60?'high':''}" style="height:${h}px;width:85%;">
-          ${d.chuva>0?`<span class="bar-mm">${d.chuva.toFixed(1)}</span>`:''}
+        <div class="bar-fill ${cls}" style="height:${h}px;width:80%;">
+          ${d.chuva>0.5?`<span class="bar-mm">${d.chuva.toFixed(1)}</span>`:''}
         </div>
       </div>
       <div class="bar-date">${label==='Hoje'?'Hoje':sub}</div>
@@ -244,18 +465,72 @@ function renderBars() {
   }).join('');
 }
 
-(async()=>{
+function renderOpWindow() {
+  const rows = datas.map(data => {
+    const ex = dadosExtra[data] || {};
+    const prob   = Math.round(ex.prob || 0);
+    const vento  = ex.vento || 0;
+    const umid   = ex.umidade || 0;
+    const {label, sub} = fmtBtn(data);
+    const nome = label === 'Hoje' ? 'Hoje' : `${label} ${sub}`;
+
+    // Avalia condições
+    const chuvaOk  = prob < 40;
+    const ventoOk  = vento < 20;
+    const umidOk   = umid < 80;
+    const allOk    = chuvaOk && ventoOk && umidOk;
+    const allBad   = !chuvaOk && (!ventoOk || !umidOk);
+    const cls      = allOk ? 'ok' : allBad ? 'danger' : 'warn';
+
+    const tags = [
+      { ok: chuvaOk,  txt: chuvaOk  ? `Chuva: ${prob}%`      : `⚠ Chuva: ${prob}%`  },
+      { ok: ventoOk,  txt: ventoOk  ? `Vento: ${vento.toFixed(0)} km/h` : `⚠ Vento: ${vento.toFixed(0)} km/h` },
+      { ok: umidOk,   txt: umidOk   ? `Umid.: ${Math.round(umid)}%`     : `⚠ Umid.: ${Math.round(umid)}%`    },
+    ];
+
+    return `<div class="op-day ${cls}">
+      <div class="op-dot ${cls}"></div>
+      <div class="op-day-name">${nome}</div>
+      <div class="op-tags">
+        ${tags.map(t=>`<span class="op-tag ${t.ok?'green':'red'}">${t.txt}</span>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('opWindow').innerHTML = rows;
+}
+
+function exportCSV() {
+  const nomes = FAZENDAS.map(f=>f.nome);
+  let csv = `Data,${nomes.join(',')},Media\n`;
+  datas.forEach(data => {
+    const pts = dadosPorDia[data]||[];
+    const vals = nomes.map(n => { const p=pts.find(x=>x.nome===n); return p?p.chuva.toFixed(2):0; });
+    const med  = avg(vals.map(parseFloat)).toFixed(2);
+    csv += `${fmtISO(data)},${vals.join(',')},${med}\n`;
+  });
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `previsao_chuva_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+(async () => {
   try {
     await fetchDados();
     initMap();
+    renderAlertBanner();
     renderCards();
+    renderMetrics();
     renderTabela();
     buildDateBar();
     renderMapDia(0);
     renderBars();
-    document.getElementById('loading').style.display='none';
+    renderOpWindow();
+    document.getElementById('loading').style.display = 'none';
   } catch(e) {
-    document.getElementById('loading').innerHTML='<p style="color:#c0392b;font-size:14px">Erro ao buscar dados. Verifique a conexão.</p>';
+    document.getElementById('loading').innerHTML =
+      '<p style="color:#c0392b;font-size:14px">Erro ao buscar dados. Verifique a conexão.</p>';
     console.error(e);
   }
 })();
