@@ -96,7 +96,7 @@ tfoot td:last-child  { border-right: none; }
 .bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
 /* BAR CHART */
-.bars-wrap { padding: 12px 16px 8px; display: flex; align-items: flex-end; gap: 10px; height: 90%; }
+.bars-wrap { padding: 12px 16px 8px; display: flex; align-items: flex-end; gap: 10px; height: 80%; }
 .bar-col   { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; gap: 4px; }
 .bar-pct   { font-size: 11px; font-weight: 600; color: #4a5a6e; }
 .bar-fill  { width: 100%; max-width: 64px; background: #b0c8e8; border-radius: 4px 4px 0 0; min-height: 4px; display: flex; align-items: center; justify-content: center; }
@@ -116,7 +116,7 @@ tfoot td:last-child  { border-right: none; }
 .op-dot.warn   { background: #f59f00; }
 .op-dot.danger { background: #c0392b; }
 .op-day-name { font-size: 11px; font-weight: 600; color: #2c3e50; min-width: 68px; }
-.op-tags { display: flex; gap: 5px; flex-wrap: wrap; flex: 1; }
+.op-tags { display: flex; gap: 5px; flex-wrap: wrap; flex: 1;justify-content:space-around; }
 .op-tag { font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 500; }
 .op-tag.green  { background: #e8f5e9; color: #2e7d32; }
 .op-tag.orange { background: #fff3e0; color: #e65100; }
@@ -219,11 +219,12 @@ tfoot td:last-child  { border-right: none; }
 
 <script>
 const FAZENDAS = [
-  { nome: "Dois Córregos", lat: -22.37,   lng: -48.38   },
-  { nome: "Barra Bonita",  lat: -22.49,   lng: -48.56   },
-  { nome: "Brotas",        lat: -22.28,   lng: -48.13   },
-  { nome: "São Carlos",    lat: -22.0087, lng: -47.8909 },
-  { nome: "Araraquara",    lat: -21.7944,   lng: -48.1756  },
+  { nome: "Dois Córregos", lat: -22.37,     lng: -48.38   },
+  { nome: "Barra Bonita",  lat: -22.49,     lng: -48.56   },
+  { nome: "Brotas",        lat: -22.28,     lng: -48.13   },
+  { nome: "São Carlos",    lat: -22.0087,   lng: -47.8909 },
+  { nome: "Araraquara",    lat: -21.7944,   lng: -48.1756 },
+  { nome: "Matão",         lat: -21.6033,   lng: -48.3658 },
 ];
 
 const DIAS  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
@@ -249,8 +250,11 @@ async function fetchDados() {
   const lngs = FAZENDAS.map(f=>f.lng).join(',');
 
   // Chuva + prob
+
+
   const urlChuva = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}`
-    + `&daily=rain_sum,precipitation_probability_max&timezone=America%2FSao_Paulo&forecast_days=7`;
+  +`&daily=precipitation_sum,precipitation_probability_max&timezone=America%2FSao_Paulo&forecast_days=7`;
+
   const jsonChuva = await (await fetch(urlChuva)).json();
   const listaChuva = Array.isArray(jsonChuva) ? jsonChuva : [jsonChuva];
 
@@ -269,7 +273,7 @@ async function fetchDados() {
       dadosPorDia[data].push({
         nome: f.nome, lat: f.lat, lng: f.lng,
         prob: loc.daily.precipitation_probability_max[d] ?? 0,
-        chuva: loc.daily.rain_sum[d] ?? 0,
+        chuva: loc.daily.precipitation_sum[d] ?? 0,
         tmax: ex?.daily?.temperature_2m_max?.[d] ?? null,
         tmin: ex?.daily?.temperature_2m_min?.[d] ?? null,
         vento: ex?.daily?.windspeed_10m_max?.[d] ?? null,
@@ -305,7 +309,7 @@ function renderAlertBanner() {
   const banner = document.getElementById('alertBanner');
   if (maxProb >= 80) {
     banner.className = 'alert-banner alert-danger show';
-    banner.innerHTML = `⚠️ <strong>Alerta:</strong> Alta probabilidade de chuva amanhã em pelo menos uma regional (${maxProb}%). Evite pulverização e colheita.`;
+    banner.innerHTML = `⚠️ <strong>Alerta:</strong> Alta probabilidade de chuva amanhã em pelo menos uma regional (${maxProb}%). Inadequado para pulverização e colheita.`;
   } else if (maxProb >= 50) {
     banner.className = 'alert-banner alert-warning show';
     banner.innerHTML = `⚡ <strong>Atenção:</strong> Probabilidade moderada de chuva amanhã (${maxProb}%). Monitore a previsão antes de operar.`;
