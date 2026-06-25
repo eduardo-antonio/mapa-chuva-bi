@@ -250,18 +250,17 @@ async function fetchDados() {
   const lngs = FAZENDAS.map(f=>f.lng).join(',');
 
   // Chuva + prob
-
-
   const urlChuva = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}`
-  +`&daily=precipitation_sum,precipitation_probability_max&timezone=America%2FSao_Paulo&forecast_days=7`;
+  + `&daily=precipitation_sum,precipitation_probability_max&timezone=America%2FSao_Paulo&forecast_days=7&models=icon_seamless`;
 
   const jsonChuva = await (await fetch(urlChuva)).json();
   const listaChuva = Array.isArray(jsonChuva) ? jsonChuva : [jsonChuva];
 
   // Temperatura + vento + umidade
   const urlExtra = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}`
-    + `&daily=temperature_2m_max,temperature_2m_min,windspeed_10m_max,relative_humidity_2m_max`
-    + `&timezone=America%2FSao_Paulo&forecast_days=7`;
+  + `&daily=temperature_2m_max,temperature_2m_min,windspeed_10m_max,relative_humidity_2m_max`
+  + `&timezone=America%2FSao_Paulo&forecast_days=7&models=icon_seamless`;
+  
   const jsonExtra = await (await fetch(urlExtra)).json();
   const listaExtra = Array.isArray(jsonExtra) ? jsonExtra : [jsonExtra];
 
