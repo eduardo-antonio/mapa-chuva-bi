@@ -6,6 +6,7 @@
 <title>Monitoramento Pluviométrico — Baldan</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -24,7 +25,7 @@ body {
 .logo-area img { height: 38px; }
 
 /* REGION CARDS */
-.cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.cards { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
 .card { background: #fff; border: 1px solid #dde3ec; border-radius: 10px; overflow: hidden; text-align: center; }
 .card-title { font-size: 11px; font-weight: 600; color: #4a5a6e; padding: 7px 8px 6px; border-bottom: 1px solid #dde3ec; background: #f8f9fb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-body  { padding: 10px 8px 8px; background: linear-gradient(135deg, #4d9de0 0%, #2979c8 100%); }
@@ -122,6 +123,13 @@ tfoot td:last-child  { border-right: none; }
 .op-tag.orange { background: #fff3e0; color: #e65100; }
 .op-tag.red    { background: #fde8e8; color: #c0392b; }
 
+/* HORARIO SELECTOR */
+.horario-selector { display: flex; gap: 6px; padding: 8px 12px; background: #f8f9fb; border-bottom: 1px solid #dde3ec; flex-wrap: wrap; align-items: center; }
+.horario-selector label { font-size: 11px; color: #4a5a6e; font-weight: 600; margin-right: 4px; }
+.horario-btn { background: transparent; border: 1px solid #dde3ec; border-radius: 5px; color: #7a8fa6; font-size: 10px; padding: 3px 8px; cursor: pointer; }
+.horario-btn:hover { background: #edf1f7; }
+.horario-btn.active { background: #2979c8; border-color: #2979c8; color: #fff; font-weight: 600; }
+
 /* LOADING */
 .loading { position: fixed; inset: 0; background: rgba(238,241,246,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; gap: 12px; }
 .spinner { width: 36px; height: 36px; border: 3px solid #dde3ec; border-top-color: #2979c8; border-radius: 50%; animation: spin 0.7s linear infinite; }
@@ -215,6 +223,17 @@ tfoot td:last-child  { border-right: none; }
     </div>
   </div>
 
+  <!-- GRÁFICO HORÁRIO -->
+  <div class="chart-box">
+    <div class="box-title">Previsão Horária de Chuva (mm) — por Regional</div>
+    <div class="horario-selector" id="horarioSelector">
+      <label>Regional:</label>
+    </div>
+    <div style="padding:12px 16px 16px;">
+      <canvas id="graficoHorario" height="80"></canvas>
+    </div>
+  </div>
+
 </div><!-- /.dash -->
 
 <script>
@@ -244,23 +263,22 @@ function fmtBtn(iso) {
 function avg(arr) { return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
 
 let dadosPorDia = {}, dadosExtra = {}, datas = [], circulos = [], map;
+let dadosHorario = {}; // { nomeFazenda: { horas: [], valores: [] } }
+let graficoHorarioInstance = null;
+let fazendaSelecionada = 'Média';
 
 async function fetchDados() {
   const lats = FAZENDAS.map(f=>f.lat).join(',');
   const lngs = FAZENDAS.map(f=>f.lng).join(',');
 
-  // Chuva + prob
   const urlChuva = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}`
-  + `&daily=precipitation_sum,precipitation_probability_max&timezone=America%2FSao_Paulo&forecast_days=7&models=icon_seamless`;
-
+    + `&daily=precipitation_sum,precipitation_probability_max&timezone=America%2FSao_Paulo&forecast_days=7`;
   const jsonChuva = await (await fetch(urlChuva)).json();
   const listaChuva = Array.isArray(jsonChuva) ? jsonChuva : [jsonChuva];
 
-  // Temperatura + vento + umidade
   const urlExtra = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}`
-  + `&daily=temperature_2m_max,temperature_2m_min,windspeed_10m_max,relative_humidity_2m_max`
-  + `&timezone=America%2FSao_Paulo&forecast_days=7&models=icon_seamless`;
-  
+    + `&daily=temperature_2m_max,temperature_2m_min,windspeed_10m_max,relative_humidity_2m_max`
+    + `&timezone=America%2FSao_Paulo&forecast_days=7`;
   const jsonExtra = await (await fetch(urlExtra)).json();
   const listaExtra = Array.isArray(jsonExtra) ? jsonExtra : [jsonExtra];
 
@@ -283,7 +301,6 @@ async function fetchDados() {
 
   datas = Object.keys(dadosPorDia).sort();
 
-  // Computa médias diárias extras
   datas.forEach(data => {
     const pts = dadosPorDia[data] || [];
     dadosExtra[data] = {
@@ -298,6 +315,119 @@ async function fetchDados() {
 
   document.getElementById('lastUpdate').textContent =
     'Atualizado: ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+}
+
+async function fetchDadosHorario() {
+  const lats = FAZENDAS.map(f=>f.lat).join(',');
+  const lngs = FAZENDAS.map(f=>f.lng).join(',');
+
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}`
+    + `&hourly=precipitation&timezone=America%2FSao_Paulo&forecast_days=1&models=icon_seamless`;
+
+  const json = await (await fetch(url)).json();
+  const lista = Array.isArray(json) ? json : [json];
+
+  const horas = lista[0].hourly.time.map(t => t.slice(11,16));
+
+  // Por fazenda
+  lista.forEach((loc, i) => {
+    dadosHorario[FAZENDAS[i].nome] = {
+      horas,
+      valores: loc.hourly.precipitation.map(v => v ?? 0)
+    };
+  });
+
+  // Média entre todas
+  dadosHorario['Média'] = {
+    horas,
+    valores: horas.map((_, h) => avg(lista.map(loc => loc.hourly.precipitation[h] ?? 0)))
+  };
+}
+
+function renderGraficoHorario(nome) {
+  const agora = new Date().getHours();
+  const dados = dadosHorario[nome] || dadosHorario['Média'];
+  const { horas, valores } = dados;
+
+  const cores = valores.map((v, i) =>
+    i === agora   ? 'rgba(224,80,80,0.9)'   :
+    v > 2         ? 'rgba(41,121,200,0.9)'  :
+    v > 0         ? 'rgba(41,121,200,0.6)'  :
+                    'rgba(180,200,220,0.25)'
+  );
+
+  if (graficoHorarioInstance) graficoHorarioInstance.destroy();
+
+  graficoHorarioInstance = new Chart(document.getElementById('graficoHorario'), {
+    type: 'bar',
+    data: {
+      labels: horas,
+      datasets: [{
+        label: 'Chuva (mm)',
+        data: valores,
+        backgroundColor: cores,
+        borderRadius: 3,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: ctx => `${ctx[0].label}h`,
+            label: ctx => ` ${ctx.parsed.y.toFixed(1)} mm`
+          }
+        },
+        annotation: {
+          annotations: {
+            horaAtual: {
+              type: 'line',
+              xMin: agora,
+              xMax: agora,
+              borderColor: 'rgba(224,80,80,0.6)',
+              borderWidth: 1,
+              borderDash: [4, 3],
+              label: { content: 'Agora', display: true, position: 'start', font: { size: 10 }, color: '#b02020' }
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            font: { size: 10 }, color: '#7a8fa6', maxRotation: 0,
+            callback: (val, i) => (i % 3 === 0) ? horas[i] : ''
+          }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { font: { size: 10 }, color: '#7a8fa6' },
+          grid: { color: '#f0f2f5' },
+          title: { display: true, text: 'mm', font: { size: 10 }, color: '#7a8fa6' }
+        }
+      }
+    }
+  });
+}
+
+function buildHorarioSelector() {
+  const sel = document.getElementById('horarioSelector');
+  const opcoes = ['Média', ...FAZENDAS.map(f => f.nome)];
+  opcoes.forEach(nome => {
+    const btn = document.createElement('button');
+    btn.className = 'horario-btn' + (nome === 'Média' ? ' active' : '');
+    btn.textContent = nome;
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.horario-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      fazendaSelecionada = nome;
+      renderGraficoHorario(nome);
+    });
+    sel.appendChild(btn);
+  });
 }
 
 function renderAlertBanner() {
@@ -337,14 +467,12 @@ function renderCards() {
 }
 
 function renderMetrics() {
-  const hoje = dadosExtra[datas[0]] || {};
   const amanha = dadosExtra[datas[1]] || {};
   const tmax  = amanha.tmax  != null ? amanha.tmax.toFixed(1)  : '--';
   const tmin  = amanha.tmin  != null ? amanha.tmin.toFixed(1)  : '--';
   const vento = amanha.vento != null ? amanha.vento.toFixed(0) : '--';
   const umid  = amanha.umidade != null ? Math.round(amanha.umidade) : '--';
 
-  // Acumulado semana
   const totalSemana = datas.reduce((sum, d) => {
     const pts = dadosPorDia[d] || [];
     return sum + avg(pts.map(p=>p.chuva));
@@ -404,7 +532,6 @@ function renderTabela() {
   });
   const tVals = nomes.map(n=>totF[n]);
   const colgroup = `<colgroup><col class="col-data">${nomes.map(()=>'<col class="col-val">').join('')}<col class="col-val"></colgroup>`;
-  const abrevs = { 'Dois Córregos':'D. Córregos', 'Barra Bonita':'B. Bonita', 'Brotas':'Brotas', 'São Carlos':'S. Carlos', 'Araraquara':'Araraqu.' };
   document.getElementById('tabela').innerHTML =
     colgroup +
     `<thead><tr><th>Data</th>${nomes.map(n=>`<th>${n}<span class="th-abbr">(mm)</span></th>`).join('')}<th>Méd.<span class="th-abbr">(mm)</span></th></tr></thead>`+
@@ -430,7 +557,6 @@ function renderMapDia(idx) {
   (dadosPorDia[datas[idx]]||[]).forEach(p=>{
     const s=bStyle(p.prob), r=7+(p.prob/100)*24;
     const c=L.circleMarker([p.lat,p.lng],{radius:r,fillColor:s.fill,fillOpacity:1,color:s.stroke,weight:1.5}).addTo(map);
-    const ex = dadosExtra[datas[idx]] || {};
     const tmaxPt = p.tmax != null ? `${p.tmax.toFixed(1)}°C` : '--';
     const ventoPt = p.vento != null ? `${p.vento.toFixed(0)} km/h` : '--';
     c.bindTooltip(`
@@ -486,7 +612,6 @@ function renderOpWindow() {
     const {label, sub} = fmtBtn(data);
     const nome = label === 'Hoje' ? 'Hoje' : `${label} ${sub}`;
 
-    // Avalia condições
     const chuvaOk  = prob < 40;
     const ventoOk  = vento < 20;
     const umidOk   = umid < 80;
@@ -498,7 +623,7 @@ function renderOpWindow() {
     const tmin = ex.tmin != null ? ex.tmin.toFixed(1) : '--';
 
     const tags = [
-      { ok: chuvaOk,  txt: chuvaOk  ? `Chuva: ${prob}%`               : `⚠ Chuva: ${prob}%`               },
+      { ok: chuvaOk,  txt: chuvaOk  ? `Chuva: ${prob}%`                : `⚠ Chuva: ${prob}%`                },
       { ok: ventoOk,  txt: ventoOk  ? `Vento: ${vento.toFixed(0)} km/h` : `⚠ Vento: ${vento.toFixed(0)} km/h` },
       { ok: umidOk,   txt: umidOk   ? `Umid.: ${Math.round(umid)}%`     : `⚠ Umid.: ${Math.round(umid)}%`    },
     ];
@@ -534,6 +659,7 @@ function exportCSV() {
 (async () => {
   try {
     await fetchDados();
+    await fetchDadosHorario();
     initMap();
     renderAlertBanner();
     renderCards();
@@ -543,6 +669,8 @@ function exportCSV() {
     renderMapDia(0);
     renderBars();
     renderOpWindow();
+    buildHorarioSelector();
+    renderGraficoHorario('Média');
     document.getElementById('loading').style.display = 'none';
   } catch(e) {
     document.getElementById('loading').innerHTML =
